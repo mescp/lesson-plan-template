@@ -86,8 +86,15 @@
             padding: 4px;
             border: 2px solid transparent;
             transition: all 0.3s ease;
-            cursor: text;
             min-height: 24px;
+        }
+
+        .text-container {
+            width: 100%;
+            height: 100%;
+            min-height: inherit;
+            cursor: text;
+            outline: none;
         }
 
         .text-overlay:hover {
@@ -101,7 +108,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .text-overlay.editing:focus {
+        .text-overlay.editing .text-container {
             outline: none;
         }
 
@@ -279,8 +286,13 @@
                 overlay.style.top = `${item.y * imageScale}px`;
                 overlay.style.width = `${item.width * imageScale}px`;
                 overlay.style.fontSize = `${(item.pageInfo.fontSize / 7) * imageScale}px`;
-                overlay.textContent = item.text;
-                overlay.contentEditable = true;
+
+                // 创建文本容器
+                const textContainer = document.createElement('div');
+                textContainer.className = 'text-container';
+                textContainer.contentEditable = true;
+                textContainer.innerText = item.text || '';
+                overlay.appendChild(textContainer);
 
                 // 添加复制按钮
                 const copyButton = document.createElement('button');
@@ -295,18 +307,18 @@
                 overlay.appendChild(copyButton);
 
                 // 编辑处理
-                overlay.addEventListener('focus', function() {
+                textContainer.addEventListener('focus', function() {
                     const overlays = document.querySelectorAll('.text-overlay');
                     overlays.forEach(o => o.classList.remove('editing'));
-                    this.classList.add('editing');
+                    overlay.classList.add('editing');
                 });
 
-                overlay.addEventListener('blur', function() {
-                    this.classList.remove('editing');
+                textContainer.addEventListener('blur', function() {
+                    overlay.classList.remove('editing');
                 });
 
-                overlay.addEventListener('input', function() {
-                    templateData.items[index].text = this.textContent;
+                textContainer.addEventListener('input', function() {
+                    templateData.items[index].text = this.innerText;
                     autoSaveToLocalStorage();
                 });
 
