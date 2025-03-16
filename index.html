@@ -19,37 +19,29 @@
         }
 
         .container {
-            display: flex;
-            gap: 20px;
-            max-width: 1600px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
-        .left-panel {
-            flex: 0 0 300px;
+        .toolbar {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: calc(100vh - 40px);
-            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
         }
 
         .preview-panel {
-            flex: 1;
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: calc(100vh - 40px);
+            height: calc(100vh - 140px);
             overflow: auto;
             position: relative;
-        }
-
-        .upload-section {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
         }
 
         .button {
@@ -60,35 +52,26 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin: 5px 0;
-            width: 100%;
+            margin: 5px;
+            min-width: 120px;
+            text-align: center;
         }
 
         .button:hover {
             background-color: #45a049;
         }
 
-        .text-input {
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            line-height: 1.5;
-            min-height: 40px;
-            resize: none;
-            overflow: hidden;
-        }
-
         .preview-container {
             position: relative;
             display: inline-block;
+            margin: 0 auto;
         }
 
         .preview-image {
             max-width: 100%;
             height: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         .text-overlay {
@@ -100,10 +83,11 @@
             color: #000;
             font-weight: 400;
             text-align: left;
-            padding: 2px;
+            padding: 4px;
             border: 2px solid transparent;
             transition: all 0.3s ease;
-            cursor: pointer;
+            cursor: text;
+            min-height: 24px;
         }
 
         .text-overlay:hover {
@@ -113,13 +97,18 @@
 
         .text-overlay.editing {
             border-color: #2196F3;
-            background-color: rgba(33, 150, 243, 0.1);
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-overlay.editing:focus {
+            outline: none;
         }
 
         .copy-button {
             position: absolute;
-            left: 5px;
-            top: 5px;
+            right: -24px;
+            top: 0;
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -141,14 +130,14 @@
         }
 
         .copy-success {
-            position: absolute;
-            right: 5px;
-            top: 5px;
+            position: fixed;
+            right: 20px;
+            top: 20px;
             background-color: #4CAF50;
             color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
             display: none;
             z-index: 1001;
             animation: fadeInOut 2s ease;
@@ -161,21 +150,6 @@
             100% { opacity: 0; }
         }
 
-        .text-item {
-            margin-bottom: 15px;
-        }
-
-        .text-item label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        #textElements {
-            margin-top: 20px;
-        }
-
         .error {
             color: red;
             margin: 5px 0;
@@ -184,19 +158,13 @@
 </head>
 <body>
     <div class="container">
-        <div class="left-panel">
-            <div class="upload-section">
-                <h2>文件上传</h2>
-                <input type="file" id="imageUpload" accept=".jpg,.jpeg,.png" style="display: none;">
-                <button class="button" onclick="document.getElementById('imageUpload').click()">上传底图</button>
-                <input type="file" id="jsonUpload" accept=".json" style="display: none;">
-                <button class="button" onclick="document.getElementById('jsonUpload').click()">上传JSON模板</button>
-                <button class="button" onclick="saveToLocalStorage()" style="background-color: #FF9800;">保存到缓存</button>
-                <button class="button" onclick="exportJSON()" style="background-color: #2196F3;">导出JSON</button>
-            </div>
-            <div id="textElements">
-                <!-- 文本编辑区域将在这里动态生成 -->
-            </div>
+        <div class="toolbar">
+            <input type="file" id="imageUpload" accept=".jpg,.jpeg,.png" style="display: none;">
+            <button class="button" onclick="document.getElementById('imageUpload').click()">上传底图</button>
+            <input type="file" id="jsonUpload" accept=".json" style="display: none;">
+            <button class="button" onclick="document.getElementById('jsonUpload').click()">上传JSON模板</button>
+            <button class="button" onclick="saveToLocalStorage()" style="background-color: #FF9800;">保存到缓存</button>
+            <button class="button" onclick="exportJSON()" style="background-color: #2196F3;">导出JSON</button>
         </div>
         <div class="preview-panel">
             <div class="preview-container" id="previewContainer">
@@ -225,7 +193,7 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    imageDataURL = e.target.result; // 保存图片的 Data URL
+                    imageDataURL = e.target.result;
                     const img = new Image();
                     img.onload = function() {
                         const container = document.getElementById('previewContainer');
@@ -233,7 +201,6 @@
                         if (templateData) {
                             updatePreview();
                         }
-                        // 自动保存到本地存储
                         autoSaveToLocalStorage();
                     };
                     img.src = imageDataURL;
@@ -246,16 +213,12 @@
         function handleJSONUpload(event) {
             const file = event.target.files[0];
             if (file) {
-                // 保存上传的文件名
                 uploadedFileName = file.name;
-                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
                         templateData = JSON.parse(e.target.result);
-                        createTextInputs();
                         updatePreview();
-                        // 自动保存到本地存储
                         autoSaveToLocalStorage();
                     } catch (error) {
                         alert('JSON文件格式错误');
@@ -263,64 +226,6 @@
                 };
                 reader.readAsText(file);
             }
-        }
-
-        // 创建文本输入框
-        function createTextInputs() {
-            const container = document.getElementById('textElements');
-            container.innerHTML = '';
-            
-            templateData.items.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'text-item';
-                
-                const label = document.createElement('label');
-                label.textContent = `文本 ${index + 1}`;
-                
-                const input = document.createElement('textarea');
-                input.className = 'text-input';
-                input.value = item.text;
-                input.dataset.index = index;
-                
-                // 自动调整高度的函数
-                function adjustHeight() {
-                    input.style.height = 'auto';
-                    input.style.height = input.scrollHeight + 'px';
-                }
-                
-                // 初始调整高度
-                setTimeout(adjustHeight, 0);
-                
-                // 添加输入事件监听器以调整高度
-                input.addEventListener('input', function() {
-                    adjustHeight();
-                    templateData.items[index].text = this.value;
-                    updatePreview();
-                    // 自动保存到本地存储
-                    autoSaveToLocalStorage();
-                });
-                
-                // 添加焦点事件处理
-                input.addEventListener('focus', function() {
-                    const overlays = document.querySelectorAll('.text-overlay');
-                    overlays.forEach(o => o.classList.remove('editing'));
-                    const overlay = document.querySelector(`.text-overlay[data-index="${index}"]`);
-                    if (overlay) {
-                        overlay.classList.add('editing');
-                        // 滚动到可视区域
-                        scrollOverlayIntoView(overlay);
-                    }
-                });
-
-                input.addEventListener('blur', function() {
-                    const overlay = document.querySelector(`.text-overlay[data-index="${index}"]`);
-                    if (overlay) overlay.classList.remove('editing');
-                });
-                
-                div.appendChild(label);
-                div.appendChild(input);
-                container.appendChild(div);
-            });
         }
 
         // 创建复制成功提示
@@ -337,17 +242,6 @@
         document.body.appendChild(saveToast);
 
         function showCopySuccess() {
-            const overlay = document.querySelector('.text-overlay.editing') || 
-                           event.currentTarget.closest('.text-overlay');
-            
-            // 定位复制成功提示到当前文本框
-            if (overlay) {
-                const rect = overlay.getBoundingClientRect();
-                successToast.style.position = 'absolute';
-                successToast.style.right = `${window.innerWidth - rect.right}px`;
-                successToast.style.top = `${rect.top}px`;
-            }
-            
             successToast.style.display = 'block';
             setTimeout(() => {
                 successToast.style.display = 'none';
@@ -355,9 +249,6 @@
         }
 
         function showSaveSuccess() {
-            saveToast.style.position = 'fixed';
-            saveToast.style.top = '20px';
-            saveToast.style.right = '20px';
             saveToast.style.display = 'block';
             setTimeout(() => {
                 saveToast.style.display = 'none';
@@ -389,6 +280,7 @@
                 overlay.style.width = `${item.width * imageScale}px`;
                 overlay.style.fontSize = `${(item.pageInfo.fontSize / 7) * imageScale}px`;
                 overlay.textContent = item.text;
+                overlay.contentEditable = true;
 
                 // 添加复制按钮
                 const copyButton = document.createElement('button');
@@ -402,11 +294,20 @@
                 };
                 overlay.appendChild(copyButton);
 
-                // 点击文本区域也可以复制
-                overlay.addEventListener('click', function() {
-                    navigator.clipboard.writeText(item.text).then(() => {
-                        showCopySuccess();
-                    });
+                // 编辑处理
+                overlay.addEventListener('focus', function() {
+                    const overlays = document.querySelectorAll('.text-overlay');
+                    overlays.forEach(o => o.classList.remove('editing'));
+                    this.classList.add('editing');
+                });
+
+                overlay.addEventListener('blur', function() {
+                    this.classList.remove('editing');
+                });
+
+                overlay.addEventListener('input', function() {
+                    templateData.items[index].text = this.textContent;
+                    autoSaveToLocalStorage();
                 });
 
                 container.appendChild(overlay);
@@ -423,7 +324,7 @@
             const dataToSave = {
                 templateData: templateData,
                 imageDataURL: imageDataURL,
-                uploadedFileName: uploadedFileName // 保存文件名到本地存储
+                uploadedFileName: uploadedFileName
             };
 
             try {
@@ -444,7 +345,8 @@
 
             const dataToSave = {
                 templateData: templateData,
-                imageDataURL: imageDataURL
+                imageDataURL: imageDataURL,
+                uploadedFileName: uploadedFileName
             };
 
             try {
@@ -461,13 +363,10 @@
                 if (savedData) {
                     const parsedData = JSON.parse(savedData);
                     
-                    // 恢复模板数据
                     if (parsedData.templateData) {
                         templateData = parsedData.templateData;
-                        createTextInputs();
                     }
                     
-                    // 恢复图片
                     if (parsedData.imageDataURL) {
                         imageDataURL = parsedData.imageDataURL;
                         const img = new Image();
@@ -481,7 +380,6 @@
                         img.src = imageDataURL;
                     }
 
-                    // 恢复文件名
                     if (parsedData.uploadedFileName) {
                         uploadedFileName = parsedData.uploadedFileName;
                     }
@@ -498,19 +396,14 @@
                 return;
             }
             
-            // 使用上传的文件名作为默认文件名
             const defaultFileName = uploadedFileName;
             const userInput = prompt('请输入保存的文件名', defaultFileName);
             
-            // 用户点击取消按钮
             if (userInput === null) {
                 return;
             }
             
-            // 使用用户输入的文件名，如果用户输入为空则使用默认文件名
             const fileName = userInput.trim() || defaultFileName;
-            
-            // 确保文件名以.json结尾
             const finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
             
             const dataStr = JSON.stringify(templateData, null, 2);
@@ -525,51 +418,15 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            // 显示保存成功提示
             const saveMessage = document.createElement('div');
-            saveMessage.style.position = 'fixed';
-            saveMessage.style.top = '20px';
-            saveMessage.style.right = '20px';
+            saveMessage.className = 'copy-success';
             saveMessage.style.backgroundColor = '#2196F3';
-            saveMessage.style.color = 'white';
-            saveMessage.style.padding = '10px 20px';
-            saveMessage.style.borderRadius = '4px';
-            saveMessage.style.zIndex = '9999';
             saveMessage.textContent = `文件保存为: ${finalFileName}`;
-            
             document.body.appendChild(saveMessage);
             
             setTimeout(() => {
                 document.body.removeChild(saveMessage);
-            }, 5000);
-        }
-
-        // 滚动文本区域到可视区域
-        function scrollOverlayIntoView(overlay) {
-            // 获取预览面板
-            const previewPanel = document.querySelector('.preview-panel');
-            
-            // 计算元素相对于预览面板的位置
-            const overlayRect = overlay.getBoundingClientRect();
-            const previewPanelRect = previewPanel.getBoundingClientRect();
-            
-            // 检查元素是否在可视区域内
-            const isInView = (
-                overlayRect.top >= previewPanelRect.top &&
-                overlayRect.bottom <= previewPanelRect.bottom
-            );
-            
-            // 如果不在可视区域内，则滚动到元素位置
-            if (!isInView) {
-                // 计算需要滚动的位置，使元素在预览面板的中间位置
-                const scrollTop = overlay.offsetTop - previewPanel.clientHeight / 2 + overlay.offsetHeight / 2;
-                
-                // 平滑滚动到指定位置
-                previewPanel.scrollTo({
-                    top: scrollTop,
-                    behavior: 'smooth'
-                });
-            }
+            }, 3000);
         }
     </script>
 </body>
