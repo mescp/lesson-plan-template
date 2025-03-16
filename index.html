@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教案模板编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .left-panel {
+            flex: 0 0 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .preview-panel {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: calc(100vh - 40px);
+            overflow: auto;
+            position: relative;
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+            width: 100%;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            line-height: 1.5;
+            min-height: 40px;
+            resize: none;
+            overflow: hidden;
+        }
+
+        .preview-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .text-overlay {
+            position: absolute;
+            pointer-events: all;
+            white-space: pre-wrap;
+            font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+            line-height: 1.5;
+            color: #000;
+            font-weight: 400;
+            text-align: left;
+            padding: 2px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .text-overlay:hover {
+            background-color: rgba(232, 245, 233, 0.9);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .text-overlay.editing {
+            border-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        .copy-button {
+            position: absolute;
+            left: 5px;
+            top: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .text-overlay:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background-color: #45a049;
+        }
+
+        .copy-success {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            display: none;
+            z-index: 1001;
+            animation: fadeInOut 2s ease;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .text-item {
+            margin-bottom: 15px;
+        }
+
+        .text-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        #textElements {
+            margin-top: 20px;
+        }
+
+        .error {
+            color: red;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div class="upload-section">
+                <h2>文件上传</h2>
+                <input type="file" id="imageUpload" accept=".jpg,.jpeg,.png" style="display: none;">
+                <button class="button" onclick="document.getElementById('imageUpload').click()">上传底图</button>
+                <input type="file" id="jsonUpload" accept=".json" style="display: none;">
+                <button class="button" onclick="document.getElementById('jsonUpload').click()">上传JSON模板</button>
+                <button class="button" onclick="saveToLocalStorage()" style="background-color: #FF9800;">保存到缓存</button>
+                <button class="button" onclick="exportJSON()" style="background-color: #2196F3;">导出JSON</button>
+            </div>
+            <div id="textElements">
+                <!-- 文本编辑区域将在这里动态生成 -->
+            </div>
+        </div>
+        <div class="preview-panel">
+            <div class="preview-container" id="previewContainer">
+                <!-- 预览区域将在这里动态生成 -->
+            </div>
+        </div>
+    </div>
+    <script>
+        let templateData = null;
+        let imageScale = 1;
+        const CM_TO_PX = 37.8; // 1cm = 37.8px (96 DPI)
+        let imageDataURL = null; // 存储底图的 Data URL
+        const STORAGE_KEY = 'templateEditorData'; // 本地存储的键名
+        let uploadedFileName = 'template_edited.json'; // 存储上传的文件名
+
+        // 页面加载时尝试从本地存储恢复数据
+        window.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+
+        // 文件上传处理
+        document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+        document.getElementById('jsonUpload').addEventListener('change', handleJSONUpload);
+
+        // 处理图片上传
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imageDataURL = e.target.result; // 保存图片的 Data URL
+                    const img = new Image();
+                    img.onload = function() {
+                        const container = document.getElementById('previewContainer');
+                        container.innerHTML = `<img src="${imageDataURL}" class="preview-image" id="baseImage">`;
+                        if (templateData) {
+                            updatePreview();
+                        }
+                        // 自动保存到本地存储
+                        autoSaveToLocalStorage();
+                    };
+                    img.src = imageDataURL;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 处理JSON上传
+        function handleJSONUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // 保存上传的文件名
+                uploadedFileName = file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        templateData = JSON.parse(e.target.result);
+                        createTextInputs();
+                        updatePreview();
+                        // 自动保存到本地存储
+                        autoSaveToLocalStorage();
+                    } catch (error) {
+                        alert('JSON文件格式错误');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // 创建文本输入框
+        function createTextInputs() {
+            const container = document.getElementById('textElements');
+            container.innerHTML = '';
+            
+            templateData.items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'text-item';
+                
+                const label = document.createElement('label');
+                label.textContent = `文本 ${index + 1}`;
+                
+                const input = document.createElement('textarea');
+                input.className = 'text-input';
+                input.value = item.text;
+                input.dataset.index = index;
+                
+                // 自动调整高度的函数
+                function adjustHeight() {
+                    input.style.height = 'auto';
+                    input.style.height = input.scrollHeight + 'px';
+                }
+                
+                // 初始调整高度
+                setTimeout(adjustHeight, 0);
+                
+                // 添加输入事件监听器以调整高度
+                input.addEventListener('input', function() {
+                    adjustHeight();
+                    templateData.items[index].text = this.value;
+                    updatePreview();
+                    // 自动保存到本地存储
+                    autoSaveToLocalStorage();
+                });
+                
+                // 添加焦点事件处理
+                input.addEventListener('focus', function() {
+                    const overlays = document.querySelectorAll('.text-overlay');
+                    overlays.forEach(o => o.classList.remove('editing'));
+                    const overlay = document.querySelector(`.text-overlay[data-index="${index}"]`);
+                    if (overlay) {
+                        overlay.classList.add('editing');
+                        // 滚动到可视区域
+                        scrollOverlayIntoView(overlay);
+                    }
+                });
+
+                input.addEventListener('blur', function() {
+                    const overlay = document.querySelector(`.text-overlay[data-index="${index}"]`);
+                    if (overlay) overlay.classList.remove('editing');
+                });
+                
+                div.appendChild(label);
+                div.appendChild(input);
+                container.appendChild(div);
+            });
+        }
+
+        // 创建复制成功提示
+        const successToast = document.createElement('div');
+        successToast.className = 'copy-success';
+        successToast.textContent = '复制成功！';
+        document.body.appendChild(successToast);
+
+        // 创建保存成功提示
+        const saveToast = document.createElement('div');
+        saveToast.className = 'copy-success';
+        saveToast.textContent = '保存成功！';
+        saveToast.style.backgroundColor = '#FF9800';
+        document.body.appendChild(saveToast);
+
+        function showCopySuccess() {
+            const overlay = document.querySelector('.text-overlay.editing') || 
+                           event.currentTarget.closest('.text-overlay');
+            
+            // 定位复制成功提示到当前文本框
+            if (overlay) {
+                const rect = overlay.getBoundingClientRect();
+                successToast.style.position = 'absolute';
+                successToast.style.right = `${window.innerWidth - rect.right}px`;
+                successToast.style.top = `${rect.top}px`;
+            }
+            
+            successToast.style.display = 'block';
+            setTimeout(() => {
+                successToast.style.display = 'none';
+            }, 2000);
+        }
+
+        function showSaveSuccess() {
+            saveToast.style.position = 'fixed';
+            saveToast.style.top = '20px';
+            saveToast.style.right = '20px';
+            saveToast.style.display = 'block';
+            setTimeout(() => {
+                saveToast.style.display = 'none';
+            }, 2000);
+        }
+
+        // 更新预览
+        function updatePreview() {
+            const container = document.getElementById('previewContainer');
+            const baseImage = document.getElementById('baseImage');
+            
+            if (!baseImage || !templateData) return;
+            
+            // 清除现有的文本覆盖层
+            const existingOverlays = container.querySelectorAll('.text-overlay');
+            existingOverlays.forEach(overlay => overlay.remove());
+            
+            // 计算缩放比例
+            const templateWidth = templateData.width * CM_TO_PX;
+            imageScale = baseImage.width / templateWidth;
+            
+            // 添加新的文本覆盖层
+            templateData.items.forEach((item, index) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'text-overlay';
+                overlay.dataset.index = index;
+                overlay.style.left = `${item.x * imageScale}px`;
+                overlay.style.top = `${item.y * imageScale}px`;
+                overlay.style.width = `${item.width * imageScale}px`;
+                overlay.style.fontSize = `${(item.pageInfo.fontSize / 7) * imageScale}px`;
+                overlay.textContent = item.text;
+
+                // 添加复制按钮
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-button';
+                copyButton.textContent = '复制';
+                copyButton.onclick = function(e) {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(item.text).then(() => {
+                        showCopySuccess();
+                    });
+                };
+                overlay.appendChild(copyButton);
+
+                // 点击文本区域也可以复制
+                overlay.addEventListener('click', function() {
+                    navigator.clipboard.writeText(item.text).then(() => {
+                        showCopySuccess();
+                    });
+                });
+
+                container.appendChild(overlay);
+            });
+        }
+
+        // 保存到本地存储
+        function saveToLocalStorage() {
+            if (!templateData) {
+                alert('请先上传JSON模板');
+                return;
+            }
+
+            const dataToSave = {
+                templateData: templateData,
+                imageDataURL: imageDataURL,
+                uploadedFileName: uploadedFileName // 保存文件名到本地存储
+            };
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                showSaveSuccess();
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    alert('存储空间不足，图片可能太大');
+                } else {
+                    alert('保存失败: ' + error.message);
+                }
+            }
+        }
+
+        // 自动保存到本地存储（不显示提示）
+        function autoSaveToLocalStorage() {
+            if (!templateData) return;
+
+            const dataToSave = {
+                templateData: templateData,
+                imageDataURL: imageDataURL
+            };
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('自动保存失败:', error);
+            }
+        }
+
+        // 从本地存储加载
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    
+                    // 恢复模板数据
+                    if (parsedData.templateData) {
+                        templateData = parsedData.templateData;
+                        createTextInputs();
+                    }
+                    
+                    // 恢复图片
+                    if (parsedData.imageDataURL) {
+                        imageDataURL = parsedData.imageDataURL;
+                        const img = new Image();
+                        img.onload = function() {
+                            const container = document.getElementById('previewContainer');
+                            container.innerHTML = `<img src="${imageDataURL}" class="preview-image" id="baseImage">`;
+                            if (templateData) {
+                                updatePreview();
+                            }
+                        };
+                        img.src = imageDataURL;
+                    }
+
+                    // 恢复文件名
+                    if (parsedData.uploadedFileName) {
+                        uploadedFileName = parsedData.uploadedFileName;
+                    }
+                }
+            } catch (error) {
+                console.error('加载本地存储数据失败:', error);
+            }
+        }
+
+        // 导出JSON
+        function exportJSON() {
+            if (!templateData) {
+                alert('请先上传JSON模板');
+                return;
+            }
+            
+            // 使用上传的文件名作为默认文件名
+            const defaultFileName = uploadedFileName;
+            const userInput = prompt('请输入保存的文件名', defaultFileName);
+            
+            // 用户点击取消按钮
+            if (userInput === null) {
+                return;
+            }
+            
+            // 使用用户输入的文件名，如果用户输入为空则使用默认文件名
+            const fileName = userInput.trim() || defaultFileName;
+            
+            // 确保文件名以.json结尾
+            const finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
+            
+            const dataStr = JSON.stringify(templateData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = finalFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 显示保存成功提示
+            const saveMessage = document.createElement('div');
+            saveMessage.style.position = 'fixed';
+            saveMessage.style.top = '20px';
+            saveMessage.style.right = '20px';
+            saveMessage.style.backgroundColor = '#2196F3';
+            saveMessage.style.color = 'white';
+            saveMessage.style.padding = '10px 20px';
+            saveMessage.style.borderRadius = '4px';
+            saveMessage.style.zIndex = '9999';
+            saveMessage.textContent = `文件保存为: ${finalFileName}`;
+            
+            document.body.appendChild(saveMessage);
+            
+            setTimeout(() => {
+                document.body.removeChild(saveMessage);
+            }, 5000);
+        }
+
+        // 滚动文本区域到可视区域
+        function scrollOverlayIntoView(overlay) {
+            // 获取预览面板
+            const previewPanel = document.querySelector('.preview-panel');
+            
+            // 计算元素相对于预览面板的位置
+            const overlayRect = overlay.getBoundingClientRect();
+            const previewPanelRect = previewPanel.getBoundingClientRect();
+            
+            // 检查元素是否在可视区域内
+            const isInView = (
+                overlayRect.top >= previewPanelRect.top &&
+                overlayRect.bottom <= previewPanelRect.bottom
+            );
+            
+            // 如果不在可视区域内，则滚动到元素位置
+            if (!isInView) {
+                // 计算需要滚动的位置，使元素在预览面板的中间位置
+                const scrollTop = overlay.offsetTop - previewPanel.clientHeight / 2 + overlay.offsetHeight / 2;
+                
+                // 平滑滚动到指定位置
+                previewPanel.scrollTo({
+                    top: scrollTop,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    </script>
+</body>
+</html> 
